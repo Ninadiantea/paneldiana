@@ -1,5 +1,6 @@
 import os, hmac, hashlib, requests, brotli, zlib, base64
 from datetime import datetime, timezone, timedelta
+from typing import Union, Optional
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 
@@ -24,7 +25,7 @@ def b64(data: bytes, urlsafe: bool) -> str:
     return enc(data).decode("ascii")
 
 
-def build_encrypted_field(iv_hex16: str | None = None, urlsafe_b64: bool = False) -> str:
+def build_encrypted_field(iv_hex16: Optional[str] = None, urlsafe_b64: bool = False) -> str:
     key = AES_KEY_ASCII.encode("ascii")
     iv_hex = iv_hex16 or random_iv_hex16()
     iv = iv_hex.encode("ascii") 
