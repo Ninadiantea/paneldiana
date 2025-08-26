@@ -1,0 +1,17 @@
+[Unit]
+Description=MyXL Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+WorkingDirectory=/path/to/myxl-cli
+Environment=PATH=/path/to/myxl-cli/venv/bin
+ExecStart=/path/to/myxl-cli/venv/bin/python /path/to/myxl-cli/bot_service.py
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
