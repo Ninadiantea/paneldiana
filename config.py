@@ -1,7 +1,7 @@
 # Configuration file for MyXL Telegram Bot
 
 # Bot Token - Ganti dengan token bot Anda dari @BotFather
-# Format: "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+# Format: "7262943555:AAGU3vo2GiyJmrbvDlOmZzWAx6EwthcMrLg"
 BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"
 
 # Admin user IDs (optional) - untuk fitur admin
