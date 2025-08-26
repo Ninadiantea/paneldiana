@@ -20,6 +20,38 @@ from config import BOT_TOKEN
 user_states = {}
 user_data = {}
 
+def truncate_message(text: str, max_length: int = 4000) -> str:
+    """Truncate message to avoid Telegram's message length limit"""
+    if len(text) <= max_length:
+        return text
+    
+    # Try to truncate at a reasonable point
+    truncated = text[:max_length-3] + "..."
+    return truncated
+
+def split_long_message(text: str, max_length: int = 4000) -> list:
+    """Split long message into multiple parts"""
+    if len(text) <= max_length:
+        return [text]
+    
+    parts = []
+    while text:
+        if len(text) <= max_length:
+            parts.append(text)
+            break
+        
+        # Find a good break point
+        break_point = text.rfind('\n', 0, max_length)
+        if break_point == -1:
+            break_point = text.rfind(' ', 0, max_length)
+        if break_point == -1:
+            break_point = max_length
+        
+        parts.append(text[:break_point])
+        text = text[break_point:].lstrip()
+    
+    return parts
+
 def load_token():
     """Load token dari file"""
     if os.path.exists("tokens.json"):
@@ -175,21 +207,32 @@ async def handle_phone_input(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data["phone_number"] = phone_number
         context.user_data["subscriber_id"] = subscriber_id
         
-        message = "✅ OTP berhasil dikirim!\n\n"
-        message += f"📱 Nomor: `{phone_number}`\n"
-        message += "Masukkan kode OTP yang telah dikirim:"
+        # Split message to avoid "Message is too long" error
+        message1 = "✅ OTP berhasil dikirim!"
+        message2 = f"📱 Nomor: `{phone_number}`\n\nMasukkan kode OTP yang telah dikirim:"
         
         keyboard = [[InlineKeyboardButton("🔙 Kembali", callback_data="main_menu")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
+        # Send first message
         await update.message.reply_text(
-            text=message,
+            text=message1,
+            parse_mode='Markdown'
+        )
+        
+        # Send second message with keyboard
+        await update.message.reply_text(
+            text=message2,
             reply_markup=reply_markup,
             parse_mode='Markdown'
         )
         
     except Exception as e:
-        await update.message.reply_text(f"❌ Error: {str(e)}")
+        error_msg = str(e)
+        if "Message is too long" in error_msg:
+            await update.message.reply_text("❌ Pesan terlalu panjang. Silakan coba lagi.")
+        else:
+            await update.message.reply_text(f"❌ Error: {error_msg[:200]}")
         user_states[user_id] = None
 
 async def handle_otp_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -230,7 +273,11 @@ async def handle_otp_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await show_main_menu(update, context)
         
     except Exception as e:
-        await update.message.reply_text(f"❌ Error: {str(e)}")
+        error_msg = str(e)
+        if "Message is too long" in error_msg:
+            await update.message.reply_text("❌ Pesan terlalu panjang. Silakan coba lagi.")
+        else:
+            await update.message.reply_text(f"❌ Error: {error_msg[:200]}")
         user_states[user_id] = None
 
 async def handle_packages(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -285,12 +332,26 @@ async def handle_packages(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.callback_query.edit_message_text(text=message, reply_markup=reply_markup)
             return
         
+        # Create shorter message to avoid "Message is too long" error
         message = "📦 *Paket XUT Tersedia*\n\n"
+        message += f"Tersedia {len(packages)} paket:\n\n"
+        
+        # Add package list (limited to avoid long message)
+        for i, package in enumerate(packages[:5]):  # Limit to 5 packages
+            price_formatted = f"{package['price']:,}"
+            message += f"{i+1}. {package['name']}\n"
+            message += f"   💰 Rp {price_formatted}\n\n"
+        
+        if len(packages) > 5:
+            message += f"...dan {len(packages) - 5} paket lainnya\n\n"
         
         keyboard = []
         for package in packages:
             price_formatted = f"{package['price']:,}"
-            button_text = f"{package['name']} - Rp {price_formatted}"
+            # Truncate button text if too long
+            button_text = f"{package['name'][:30]} - Rp {price_formatted}"
+            if len(button_text) > 64:  # Telegram button limit
+                button_text = f"{package['name'][:20]} - Rp {price_formatted}"
             keyboard.append([InlineKeyboardButton(button_text, callback_data=f"buy_{package['code']}")])
         
         keyboard.append([InlineKeyboardButton("🔙 Kembali", callback_data="main_menu")])
@@ -304,7 +365,14 @@ async def handle_packages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     except Exception as e:
         logger.error(f"Error in handle_packages: {str(e)}")
-        message = f"❌ Error saat memuat paket:\n{str(e)}"
+        
+        # Handle "Message is too long" error specifically
+        if "Message is too long" in str(e):
+            message = "❌ Pesan terlalu panjang untuk ditampilkan.\n\n"
+            message += "Silakan coba lagi atau hubungi admin."
+        else:
+            message = f"❌ Error saat memuat paket:\n{str(e)[:200]}"
+        
         keyboard = [[InlineKeyboardButton("🔙 Kembali", callback_data="main_menu")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.callback_query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -336,15 +404,19 @@ async def handle_buy_package(update: Update, context: ContextTypes.DEFAULT_TYPE)
         
         if result and result.get("success"):
             message = f"✅ *Pembelian Berhasil!*\n\n"
-            message += f"📦 Paket: {package['name']}\n"
+            message += f"📦 Paket: {package['name'][:50]}\n"
             message += f"💰 Harga: Rp {package['price']:,}\n"
             message += f"📱 Nomor: {user_info['phone_number']}"
         else:
             message = f"❌ *Pembelian Gagal!*\n\n"
-            message += f"📦 Paket: {package['name']}\n"
+            message += f"📦 Paket: {package['name'][:50]}\n"
             message += f"💰 Harga: Rp {package['price']:,}\n"
             if result:
-                message += f"Error: {result.get('message', 'Unknown error')}"
+                error_msg = result.get('message', 'Unknown error')
+                message += f"Error: {error_msg[:100]}"
+        
+        # Truncate message if too long
+        message = truncate_message(message)
         
         keyboard = [[InlineKeyboardButton("🔙 Kembali", callback_data="main_menu")]]
         reply_markup = InlineKeyboardMarkup(keyboard)

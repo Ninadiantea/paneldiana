@@ -32,6 +32,57 @@
 - Update kode untuk handle struktur data baru
 - Cek log untuk detail error
 
+## Masalah: "Message is too long" Error
+
+### Gejala
+- Error saat input OTP atau menampilkan paket
+- Bot crash dengan error "Message is too long"
+
+### Penyebab
+- Telegram memiliki batasan maksimal 4096 karakter per pesan
+- Pesan yang dikirim terlalu panjang
+
+### Solusi
+- ✅ **Sudah diperbaiki** - Bot sekarang otomatis memotong pesan panjang
+- ✅ **Split messages** - Pesan panjang akan dibagi menjadi beberapa bagian
+- ✅ **Truncate long text** - Teks yang terlalu panjang akan dipotong
+
+### Debug
+```bash
+# Test message length handling
+python3 test_message_length.py
+```
+
+### Gejala
+- Bot berjalan normal
+- Login berhasil
+- Saat klik "📦 Paket XUT" tidak ada respon atau muncul error
+
+### Penyebab Umum
+
+#### 1. Token Expired
+**Gejala**: Bot tidak merespon saat klik Paket XUT
+**Solusi**:
+```bash
+# Login ulang dengan bot
+# Atau restart bot
+./stop_bot.sh
+./start_bot.sh
+```
+
+#### 2. API MyXL Bermasalah
+**Gejala**: Error "Failed to get family data"
+**Solusi**:
+- Cek koneksi internet
+- Coba lagi beberapa menit kemudian
+- API MyXL mungkin sedang maintenance
+
+#### 3. Data Structure Berubah
+**Gejala**: Error parsing data
+**Solusi**:
+- Update kode untuk handle struktur data baru
+- Cek log untuk detail error
+
 ### Debug Steps
 
 #### Step 1: Cek Log Bot
