@@ -89,6 +89,41 @@ myxl-cli/
 python3 run_bot.py
 ```
 
+## Repository Management 📚
+
+### Pull Latest Updates
+```bash
+./pull_updates.sh
+```
+
+### Push Your Changes
+```bash
+./push_changes.sh
+```
+
+### Sync Repository (Pull + Push)
+```bash
+./sync_repo.sh
+```
+
+### Quick Git Commands
+```bash
+# Check status
+git status
+
+# Add changes
+git add .
+
+# Commit changes
+git commit -m "Your message"
+
+# Push changes
+git push origin main
+
+# Pull updates
+git pull origin main
+```
+
 ## Setup Bot Telegram 📱
 
 1. **Buat bot** di [@BotFather](https://t.me/BotFather)
