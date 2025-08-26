@@ -244,10 +244,42 @@ async def handle_packages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         await update.callback_query.answer("📦 Memuat paket...")
+        
+        # Debug: Log user info
+        logger.info(f"User {user_id} requesting packages")
+        logger.info(f"User tokens: {user_info.get('tokens', {}).keys()}")
+        
+        # Check if tokens are valid and refresh if needed
+        if not user_info.get("tokens") or not user_info["tokens"].get("id_token"):
+            message = "❌ Token tidak valid. Silakan login ulang."
+            keyboard = [[InlineKeyboardButton("🔙 Kembali", callback_data="main_menu")]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.callback_query.edit_message_text(text=message, reply_markup=reply_markup)
+            return
+        
+        # Try to refresh token if we have refresh_token
+        try:
+            if user_info["tokens"].get("refresh_token"):
+                logger.info("Refreshing token...")
+                new_tokens = get_new_token(user_info["tokens"]["refresh_token"])
+                if new_tokens:
+                    user_info["tokens"] = new_tokens
+                    user_data[user_id] = user_info
+                    logger.info("Token refreshed successfully")
+        except Exception as e:
+            logger.warning(f"Failed to refresh token: {str(e)}")
+        
         packages = get_package_xut(user_info["tokens"])
         
+        # Debug: Log packages result
+        logger.info(f"Packages result: {packages}")
+        
         if not packages:
-            message = "❌ Tidak ada paket tersedia saat ini."
+            message = "❌ Tidak ada paket tersedia saat ini.\n\n"
+            message += "Mungkin:\n"
+            message += "• Token sudah expired\n"
+            message += "• Tidak ada paket XUT tersedia\n"
+            message += "• Ada masalah dengan API MyXL"
             keyboard = [[InlineKeyboardButton("🔙 Kembali", callback_data="main_menu")]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await update.callback_query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -271,7 +303,11 @@ async def handle_packages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
     except Exception as e:
-        await update.callback_query.answer(f"❌ Error: {str(e)}")
+        logger.error(f"Error in handle_packages: {str(e)}")
+        message = f"❌ Error saat memuat paket:\n{str(e)}"
+        keyboard = [[InlineKeyboardButton("🔙 Kembali", callback_data="main_menu")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.callback_query.edit_message_text(text=message, reply_markup=reply_markup)
 
 async def handle_buy_package(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler untuk membeli paket"""
